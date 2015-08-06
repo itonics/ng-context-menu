@@ -5,122 +5,179 @@
  * @author Ian Kennington Walter (http://ianvonwalter.com)
  */
 angular
-  .module('ng-context-menu', [])
-  .factory('ContextMenuService', function() {
-    return {
-      element: null,
-      menuElement: null
-    };
-  })
-  .directive('contextMenu', [
-    '$document',
-    'ContextMenuService',
-    function($document, ContextMenuService) {
-      return {
-        restrict: 'A',
-        scope: {
-          'callback': '&contextMenu',
-          'disabled': '&contextMenuDisabled',
-          'closeCallback': '&contextMenuClose'
-        },
-        link: function($scope, $element, $attrs) {
-          var opened = false;
+    .module('ng-context-menu', [])
+    .factory('ContextMenuService', function() {
+        return {
+            element: null,
+            menuElement: null
+        };
+    })
+    .directive('contextMenu', [
+        '$document',
+        'ContextMenuService',
+        '$timeout',
+        function($document, ContextMenuService, $timeout) {
+            return {
+                restrict: 'A',
+                scope: {
+                    'callback': '&contextMenu',
+                    'disabled': '&contextMenuDisabled',
+                    'closeCallback': '&contextMenuClose'
+                },
+                link: function($scope, $element, $attrs) {
+                    var opened = false;
 
-          function open(event, menuElement) {
-            menuElement.addClass('open');
+                    // LEB::
+                    var longPressEnabled = $attrs["contextMenuLongPress"];
+                    var longClickTimer = null;
 
-            var doc = $document[0].documentElement;
-            var docLeft = (window.pageXOffset || doc.scrollLeft) -
-                          (doc.clientLeft || 0),
-                docTop = (window.pageYOffset || doc.scrollTop) -
-                         (doc.clientTop || 0),
-                elementWidth = menuElement[0].scrollWidth,
-                elementHeight = menuElement[0].scrollHeight;
-            var docWidth = doc.clientWidth + docLeft,
-              docHeight = doc.clientHeight + docTop,
-              totalWidth = elementWidth + event.pageX,
-              totalHeight = elementHeight + event.pageY,
-              left = Math.max(event.pageX - docLeft, 0),
-              top = Math.max(event.pageY - docTop, 0);
 
-            if (totalWidth > docWidth) {
-              left = left - (totalWidth - docWidth);
-            }
+                    function open(event, menuElement, posX, posY) {
+                        menuElement.addClass('open');
 
-            if (totalHeight > docHeight) {
-              top = top - (totalHeight - docHeight);
-            }
+                        var doc = $document[0].documentElement;
+                        var docLeft = (window.pageXOffset || doc.scrollLeft) -
+                                (doc.clientLeft || 0),
+                            docTop = (window.pageYOffset || doc.scrollTop) -
+                                (doc.clientTop || 0),
+                            elementWidth = menuElement[0].scrollWidth,
+                            elementHeight = menuElement[0].scrollHeight;
+                        var docWidth = doc.clientWidth + docLeft,
+                            docHeight = doc.clientHeight + docTop,
+                            totalWidth = elementWidth + posX,
+                            totalHeight = elementHeight + posY,
+                            left = Math.max(posX - docLeft, 0),
+                            top = Math.max(posY - docTop, 0);
 
-            menuElement.css('top', top + 'px');
-            menuElement.css('left', left + 'px');
-            opened = true;
-          }
+                        if (totalWidth > docWidth) {
+                            left = left - (totalWidth - docWidth);
+                        }
 
-          function close(menuElement) {
-            menuElement.removeClass('open');
+                        if (totalHeight > docHeight) {
+                            top = top - (totalHeight - docHeight);
+                        }
 
-            if (opened) {
-              $scope.closeCallback();
-            }
+                        menuElement.css('top', top + 'px');
+                        menuElement.css('left', left + 'px');
+                        opened = true;
+                    }
 
-            opened = false;
-          }
+                    function close(menuElement) {
+                        menuElement.removeClass('open');
 
-          $element.bind('contextmenu', function(event) {
-            if (!$scope.disabled()) {
-              if (ContextMenuService.menuElement !== null) {
-                close(ContextMenuService.menuElement);
-              }
-              ContextMenuService.menuElement = angular.element(
-                document.getElementById($attrs.target)
-              );
-              ContextMenuService.element = event.target;
-              //console.log('set', ContextMenuService.element);
+                        if (opened) {
+                            $scope.closeCallback();
+                        }
 
-              event.preventDefault();
-              event.stopPropagation();
-              $scope.$apply(function() {
-                $scope.callback({ $event: event });
-              });
-              $scope.$apply(function() {
-                open(event, ContextMenuService.menuElement);
-              });
-            }
-          });
+                        opened = false;
+                    }
 
-          function handleKeyUpEvent(event) {
-            //console.log('keyup');
-            if (!$scope.disabled() && opened && event.keyCode === 27) {
-              $scope.$apply(function() {
-                close(ContextMenuService.menuElement);
-              });
-            }
-          }
+                    $element.bind('contextmenu', handleContextMenuShow);
 
-          function handleClickEvent(event) {
-            if (!$scope.disabled() &&
-              opened &&
-              (event.button !== 2 ||
-               event.target !== ContextMenuService.element)) {
-              $scope.$apply(function() {
-                close(ContextMenuService.menuElement);
-              });
-            }
-          }
+                    function handleContextMenuShow(event, posX, posY){
+                        posX = (typeof posX === 'undefined') ? event.pageX : posX;
+                        posY = (typeof posY === 'undefined') ? event.pageY : posY;
 
-          $document.bind('keyup', handleKeyUpEvent);
-          // Firefox treats a right-click as a click and a contextmenu event
-          // while other browsers just treat it as a contextmenu event
-          $document.bind('click', handleClickEvent);
-          $document.bind('contextmenu', handleClickEvent);
+                        if (!$scope.disabled()) {
+                            if (ContextMenuService.menuElement !== null) {
+                                close(ContextMenuService.menuElement);
+                            }
+                            ContextMenuService.menuElement = angular.element(
+                                document.getElementById($attrs.target)
+                            );
+                            ContextMenuService.element = event.target;
 
-          $scope.$on('$destroy', function() {
-            //console.log('destroy');
-            $document.unbind('keyup', handleKeyUpEvent);
-            $document.unbind('click', handleClickEvent);
-            $document.unbind('contextmenu', handleClickEvent);
-          });
+                            event.preventDefault();
+                            event.stopPropagation();
+                            $scope.$apply(function() {
+                                $scope.callback({ $event: event });
+                            });
+                            $scope.$apply(function() {
+                                open(event, ContextMenuService.menuElement, posX, posY);
+                            });
+                        }
+                    }
+
+                    function handleKeyUpEvent(event) {
+                        //console.log('keyup');
+                        if (!$scope.disabled() && opened && event.keyCode === 27) {
+                            $scope.$apply(function() {
+                                close(ContextMenuService.menuElement);
+                            });
+                        }
+                    }
+
+                    function handleClickEvent(event) {
+                        if (!$scope.disabled() &&
+                            opened &&
+                            (event.button !== 2 ||
+                            event.target !== ContextMenuService.element)) {
+                            $scope.$apply(function() {
+                                close(ContextMenuService.menuElement);
+                            });
+                        }
+                    }
+
+                    $document.bind('keyup', handleKeyUpEvent);
+                    // Firefox treats a right-click as a click and a contextmenu event
+                    // while other browsers just treat it as a contextmenu event
+                    $document.bind('click', handleClickEvent);
+                    $document.bind('contextmenu', handleClickEvent);
+
+                    // Customized for LEB :: show context menu on long press on iPad/Touch devices
+                    if(typeof longPressEnabled !== 'undefined'){
+                        var longPressTO = parseInt(longPressEnabled) || 1000;
+                        $document.unbind('click', handleClickEvent);
+
+                        $element.on("touchstart", function(e) {
+                            var touchEnd;
+                            var touchStart = touchEnd = e.originalEvent.changedTouches[0].pageY;
+
+                            $document.unbind('touchstart', handleClickEvent);
+
+                            if(ContextMenuService.menuElement){
+                                ContextMenuService.menuElement.removeClass('touchClickEnabled');
+                            }
+
+                            var touchExceeded = false;
+
+                            $element.on("touchmove", function(e) {
+                                touchEnd = e.originalEvent.changedTouches[0].pageY;
+
+                                if(touchExceeded || touchStart - touchEnd > 50 || touchEnd - touchStart > 50) {
+                                    e.preventDefault();
+                                    touchExceeded = true;
+                                }
+                            });
+
+                            longClickTimer = $timeout(function() {
+                                handleContextMenuShow(e, e.originalEvent.changedTouches[0].pageX + 10,  e.originalEvent.changedTouches[0].pageY + 10);
+                            },longPressTO);
+
+                            $element.on("touchend", function(e) {
+                                $timeout.cancel(longClickTimer);
+                                $document.unbind('touchstart', handleClickEvent);
+                                $timeout(function(){
+                                    //$document.bind('click', handleClickEvent);
+                                    if(ContextMenuService.menuElement){
+                                        ContextMenuService.menuElement.addClass('touchClickEnabled');
+                                    }
+                                    $document.bind('touchstart', handleClickEvent);
+                                },500);
+                                $element.off("touchmove touchend");
+                            });
+                        });
+
+                    }
+
+                    $scope.$on('$destroy', function() {
+                        //console.log('destroy');
+                        $document.unbind('touchstart', handleClickEvent);
+                        $document.unbind('keyup', handleKeyUpEvent);
+                        $document.unbind('click', handleClickEvent);
+                        $document.unbind('contextmenu', handleClickEvent);
+                    });
+                }
+            };
         }
-      };
-    }
-  ]);
+    ]);
