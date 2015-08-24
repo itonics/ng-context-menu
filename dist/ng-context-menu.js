@@ -125,7 +125,7 @@ angular
                     $document.bind('contextmenu', handleClickEvent);
 
                     // Customized for LEB :: show context menu on long press on iPad/Touch devices
-                    if(typeof longPressEnabled !== 'undefined'){
+                    /*if(typeof longPressEnabled !== 'undefined'){
                         var longPressTO = parseInt(longPressEnabled) || 1000;
                         $document.unbind('click', handleClickEvent);
 
@@ -168,7 +168,7 @@ angular
                             });
                         });
 
-                    }
+                    }*/
 
                     $scope.$on('$destroy', function() {
                         //console.log('destroy');
