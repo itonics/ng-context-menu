@@ -16,7 +16,7 @@ angular
         '$document',
         'ContextMenuService',
         '$timeout',
-        function($document, ContextMenuService, $timeout) {
+        function($document, ContextMenuService) {
             return {
                 restrict: 'A',
                 scope: {
@@ -33,6 +33,7 @@ angular
 
 
                     function open(event, menuElement, posX, posY) {
+
                         menuElement.addClass('open');
 
                         var doc = $document[0].documentElement;
@@ -60,6 +61,14 @@ angular
                         menuElement.css('top', top + 'px');
                         menuElement.css('left', left + 'px');
                         opened = true;
+
+                      $document.bind('keyup.context-menu', handleKeyUpEvent);
+                      // Firefox treats a right-click as a click and a contextmenu event
+                      // while other browsers just treat it as a contextmenu event
+                      $document.bind('click.context-menu', handleClickEvent);
+                      $document.bind('contextmenu.context-menu', handleClickEvent);
+                      //angular.element($window).unbind('.context-menu-event');
+                      $document.bind('scroll.context-menu-event', handleClickEvent);
                     }
 
                     function close(menuElement) {
@@ -70,6 +79,10 @@ angular
                         }
 
                         opened = false;
+                      $document.unbind('keyup.context-menu', handleKeyUpEvent);
+                      $document.unbind('click.context-menu', handleClickEvent);
+                      $document.unbind('contextmenu.context-menu', handleClickEvent);
+                      $document.unbind('scroll.context-menu-event', handleClickEvent);
                     }
 
                     $element.bind('contextmenu', handleContextMenuShow);
@@ -118,11 +131,7 @@ angular
                         }
                     }
 
-                    $document.bind('keyup', handleKeyUpEvent);
-                    // Firefox treats a right-click as a click and a contextmenu event
-                    // while other browsers just treat it as a contextmenu event
-                    $document.bind('click', handleClickEvent);
-                    $document.bind('contextmenu', handleClickEvent);
+
 
                     // Customized for LEB :: show context menu on long press on iPad/Touch devices
                     /*if(typeof longPressEnabled !== 'undefined'){
