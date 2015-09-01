@@ -27,8 +27,6 @@ angular
         link: function ($scope, $element, $attrs) {
           var opened = false;
 
-          console.log("context menu disabled", $scope.disabled);
-
           // LEB::
           var longPressEnabled = $attrs["contextMenuLongPress"];
           var longClickTimer = null;
